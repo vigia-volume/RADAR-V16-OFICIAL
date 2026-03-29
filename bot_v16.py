@@ -1,69 +1,51 @@
-import websocket
-import json
-import threading
+import os, threading, asyncio, time
 from flask import Flask
-import os
+from deriv_api import DerivAPI
+
+TOKEN = 'VdqSSrYBtghuLRFi'
+APP_ID = '1089' 
 
 app = Flask(__name__)
-
-# CONFIGURAÇÕES DE COMBATE - DADOS RESGATADOS
-TOKEN = "V68YfE6G7i5X6Tj" # Token de Negociação (Trade)
-APP_ID = "61546" # Seu App ID da Deriv
-SYMBOL = "R_75" 
-
 @app.route('/')
-def home():
-    return "OPERANTE - ATAQUE DIRETO EM CURSO"
+def home(): return "ROBÔ V75 - MARTINGALE 7 NÍVEIS ATIVO", 200
 
-def abrir_ordem(ws):
-    print("--- DISPARANDO AGORA NO VOLATILITY 75 ---")
-    # Comando de compra (CALL) imediato
-    payload = {
-        "buy": 1,
-        "price": 100, # Preço máximo aceitável
-        "parameters": {
-            "amount": 1.0,
-            "basis": "stake",
-            "contract_type": "CALL",
-            "currency": "USD",
-            "duration": 1,
-            "duration_unit": "m",
-            "symbol": SYMBOL
-        }
-    }
-    ws.send(json.dumps(payload))
-
-def on_message(ws, message):
-    dados = json.loads(message)
+async def loop_martingale():
+    api = DerivAPI(app_id=APP_ID)
+    await api.authorize(TOKEN)
     
-    # 1. Autenticação
-    if "authorize" in dados:
-        if "error" in dados:
-            print(f"ERRO DE AUTENTICAÇÃO: {dados['error']['message']}")
-        else:
-            print("AUTENTICADO! DISPARANDO TIRO DE TESTE...")
-            abrir_ordem(ws)
-    
-    # 2. Resposta da Compra
-    if "buy" in dados:
-        if "error" in dados:
-            print(f"ERRO NA OPERAÇÃO: {dados['error']['message']}")
-        else:
-            print("ORDEM EXECUTADA COM SUCESSO NA DERIV!")
+    # Tabela de Martingale (Volume 1.0 inicial)
+    niveis = [1.0, 2.1, 4.5, 9.5, 20.0, 42.0, 88.0]
+    indice = 0
 
-def on_open(ws):
-    auth_data = {"authorize": TOKEN}
-    ws.send(json.dumps(auth_data))
+    while True:
+        valor_atual = niveis[indice]
+        print(f"[{time.strftime('%H:%M:%S')}] Ordem Nível {indice+1}: Vol {valor_atual}")
+        
+        try:
+            # Executa Rise (CALL) de 1 minuto
+            compra = await api.buy({"buy": 1, "price": 100, "parameters": {"amount": valor_atual, "basis": "stake", "contract_type": "CALL", "currency": "USD", "duration": 1, "duration_unit": "m", "symbol": "R_75"}})
+            contract_id = compra['buy']['contract_id']
+            
+            # Aguarda 65s para resultado
+            await asyncio.sleep(65)
+            
+            # Verifica Resultado
+            check = await api.forget_all('proposal_open_contract')
+            status = await api.proposal_open_contract({"proposal_open_contract": 1, "contract_id": contract_id})
+            resultado = status['proposal_open_contract']['status'] # 'won' ou 'lost'
 
-def iniciar_bot():
-    url = f"wss://ws.binaryws.com/websockets/v3?app_id={APP_ID}"
-    ws = websocket.WebSocketApp(url, on_open=on_open, on_message=on_message)
-    ws.run_forever()
+            if resultado == 'won':
+                print("VITÓRIA! Resetando Martingale.")
+                indice = 0
+            else:
+                print("DERROTA. Subindo nível.")
+                indice = (indice + 1) if indice < 6 else 0 # Reseta se passar do 7º nível
+
+        except Exception as e:
+            print(f"Erro: {e}")
+            await asyncio.sleep(10)
 
 if __name__ == "__main__":
-    # Inicia o motor em segundo plano
-    threading.Thread(target=iniciar_bot, daemon=True).start()
-    
-    # Porta padrão para o Render
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    threading.Thread(target=lambda: asyncio.run(loop_martingale()), daemon=True).start()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
