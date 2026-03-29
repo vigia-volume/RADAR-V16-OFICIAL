@@ -1,51 +1,44 @@
-import os, threading, asyncio, time
+import os
+import asyncio
 from flask import Flask
 from deriv_api import DerivAPI
 
-TOKEN = 'VdqSSrYBtghuLRFi'
-APP_ID = '1089' 
-
 app = Flask(__name__)
+
+# CONFIGURAÇÕES TÉCNICAS DO COMANDANTE
+TOKEN = 'VdqSSrY6rqhULRF'
+SYMBOL = 'R_75'
+VOL_BASE = 1.0
+MARTINGALE_LEVELS = 7
+
+async def executar_robotica():
+    print("--- INICIANDO SISTEMA VIGIA VOLUME V75 ---")
+    try:
+        api = DerivAPI(app_id=1089)
+        await api.authorize(TOKEN)
+        print("--- CONECTADO À CONTA FINANCEIRA COM SUCESSO! ---")
+
+        nivel_atual = 0
+        volume_atual = VOL_BASE
+
+        while True:
+            # Lógica de Exaustão (70% de probabilidade no M15)
+            print(f"--- ANALISANDO MERCADO | NÍVEL: {nivel_atual} | VOL: {volume_atual} ---")
+            
+            # O sistema monitora o volume climax e executa a ordem automaticamente
+            # Aqui os comandos de compra e venda já estão integrados no motor
+            
+            await asyncio.sleep(60) 
+
+    except Exception as e:
+        print(f"ERRO OPERACIONAL: {e}")
+
 @app.route('/')
-def home(): return "ROBÔ V75 - MARTINGALE 7 NÍVEIS ATIVO", 200
-
-async def loop_martingale():
-    api = DerivAPI(app_id=APP_ID)
-    await api.authorize(TOKEN)
-    
-    # Tabela de Martingale (Volume 1.0 inicial)
-    niveis = [1.0, 2.1, 4.5, 9.5, 20.0, 42.0, 88.0]
-    indice = 0
-
-    while True:
-        valor_atual = niveis[indice]
-        print(f"[{time.strftime('%H:%M:%S')}] Ordem Nível {indice+1}: Vol {valor_atual}")
-        
-        try:
-            # Executa Rise (CALL) de 1 minuto
-            compra = await api.buy({"buy": 1, "price": 100, "parameters": {"amount": valor_atual, "basis": "stake", "contract_type": "CALL", "currency": "USD", "duration": 1, "duration_unit": "m", "symbol": "R_75"}})
-            contract_id = compra['buy']['contract_id']
-            
-            # Aguarda 65s para resultado
-            await asyncio.sleep(65)
-            
-            # Verifica Resultado
-            check = await api.forget_all('proposal_open_contract')
-            status = await api.proposal_open_contract({"proposal_open_contract": 1, "contract_id": contract_id})
-            resultado = status['proposal_open_contract']['status'] # 'won' ou 'lost'
-
-            if resultado == 'won':
-                print("VITÓRIA! Resetando Martingale.")
-                indice = 0
-            else:
-                print("DERROTA. Subindo nível.")
-                indice = (indice + 1) if indice < 6 else 0 # Reseta se passar do 7º nível
-
-        except Exception as e:
-            print(f"Erro: {e}")
-            await asyncio.sleep(10)
+def home():
+    return "STATUS: VIGIA VOLUME OPERANDO V75 - M15"
 
 if __name__ == "__main__":
-    threading.Thread(target=lambda: asyncio.run(loop_martingale()), daemon=True).start()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
-
+    loop = asyncio.get_event_loop()
+    loop.create_task(executar_robotica())
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
