@@ -5,43 +5,37 @@ from deriv_api import DerivAPI
 
 app = Flask(__name__)
 
-# --- PARÂMETROS ESTRATÉGICOS DO COMANDANTE ---
+# --- PARÂMETROS DO COMANDANTE ---
 TOKEN = 'oUaw8xfV2i54wpQ'
 SYMBOL = 'R_75'
 STAKE_INICIAL = 0.35
-META_LUCRO = 10.0       # Objetivo: $10 de lucro e para
-MAX_MARTINGALE = 7     # Limite de 7 níveis de resistência
-MULTIPLIER = 2.1       # Multiplicador para recuperação
+META_LUCRO = 10.0
+MAX_MARTINGALE = 7
 
 async def motor_v75_sniper():
-    lucro_acumulado = 0.0
-    print(f"\n--- INICIANDO OPERAÇÃO V75 | META: ${META_LUCRO} ---")
-    
+    print("--- SISTEMA INICIADO: AGUARDANDO CONEXÃO DERIV ---", flush=True)
     try:
         api = DerivAPI(app_id=1089)
         await api.authorize(TOKEN)
-        print("--- CONEXÃO ESTABELECIDA: AUTORIDADE CONFIRMADA! ---")
+        print("--- AUTORIDADE V75 CONFIRMADA! ---", flush=True)
         
-        while lucro_acumulado < META_LUCRO:
-            # Lógica de análise de exaustão em M1 aqui
-            print(f"LUCRO ATUAL: ${lucro_acumulado:.2f} | RASTREANDO V75...")
-            
-            # Simulação de espera pelo sinal de exaustão
-            await asyncio.sleep(15) 
-            
-            if lucro_acumulado >= META_LUCRO:
-                print(f"--- META ATINGIDA: ${lucro_acumulado:.2f} | MISSÃO CUMPRIDA! ---")
-                break
+        while True:
+            print(f"--- RASTREANDO V75 | META $10 | ENTRADA BASE $0.35 ---", flush=True)
+            await asyncio.sleep(20) # Intervalo de varredura
 
     except Exception as e:
-        print(f"ALERTA NO SISTEMA: {e}")
+        print(f"ERRO DE CONEXÃO: {e}", flush=True)
 
 @app.route('/')
 def home():
-    return f"RADAR V16 ATIVO | META: $10 | V75"
+    return "RADAR V16 OPERACIONAL"
 
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
+def start_bot():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     loop.create_task(motor_v75_sniper())
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
+
+if __name__ == "__main__":
+    start_bot()
