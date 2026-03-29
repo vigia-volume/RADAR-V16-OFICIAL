@@ -57,7 +57,7 @@ def radar_mercado():
             
             print(f"Volume Atual: {v_atual} | Média(6): {media:.2f}")
 
-            if v_atual >= (media * 2.0):
+            if v_atual >= (media * 1.0):
                 abrir_ordem("REVERSÃO", martingale[nivel])
                 # Simulação de resultado para o Martingale
                 nivel = (nivel + 1) % 7 
