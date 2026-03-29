@@ -63,7 +63,10 @@ def radar_mercado():
                 nivel = (nivel + 1) % 7 
         
         time.sleep(60)
-
 if __name__ == "__main__":
-    threading.Thread(target=lambda: app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))).start()
-    radar_mercado()
+    # Liga o motor do radar em uma pista separada
+    threading.Thread(target=radar_mercado, daemon=True).start()
+    
+    # Mantém o servidor vivo para o Render
+    app.run(host='0.0.0.0', port=10000)
+
