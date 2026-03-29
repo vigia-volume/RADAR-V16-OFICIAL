@@ -1,72 +1,64 @@
-import os
-import time
+import websocket
 import json
 import threading
-import requests
 from flask import Flask
-from websocket import create_connection
-
-# --- DNA DE COMBATE ---
-DERIV_TOKEN = "Vdq55rY6rqhULRF"
-TELEGRAM_TOKEN = "8080389321:AAEo3_kEGP9Z0dFpIOmGHocNhp012LcV13Q"
-CHAT_ID = "6672755918"
-
-# --- ESTRATÉGIA ---
-martingale = [1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0]
-nivel = 0
-pausa_tativa = 0
+import os
 
 app = Flask(__name__)
+
+# CONFIGURAÇÕES DE COMBATE - DERIV
+TOKEN = "COLE_SEU_TOKEN_AQUI" 
+APP_ID = "1089" 
+SYMBOL = "R_75" 
+
 @app.route('/')
-def home(): return "Shine Operacional", 200
+def home():
+    return "OPERANTE - AGUARDANDO COMANDO"
 
-def enviar_msg(texto):
-    def post():
-        try: requests.post(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage", json={"chat_id": CHAT_ID, "text": texto}, timeout=5)
-        except: pass
-    threading.Thread(target=post).start()
+def abrir_ordem(ws):
+    print("--- ATACANDO AGORA NO VOLATILITY 75 ---")
+    # Comando direto de compra (CALL) de 1 minuto
+    payload = {
+        "buy": 1,
+        "price": 1,
+        "parameters": {
+            "amount": 1.0,
+            "basis": "stake",
+            "contract_type": "CALL",
+            "currency": "USD",
+            "duration": 1,
+            "duration_unit": "m",
+            "symbol": SYMBOL
+        }
+    }
+    ws.send(json.dumps(payload))
 
-def abrir_ordem(tipo, valor):
-    global nivel, pausa_tativa
-    print(f"🔥 EXAUSTÃO DETECTADA! Entrando com ${valor}")
-    # O comando de compra real via WebSocket vai aqui
-    enviar_msg(f"🎯 Shine atacou: {tipo} de ${valor}")
-    pausa_tativa = 2 # Ativa a pausa de 2 velas
-
-def radar_mercado():
-    global nivel, pausa_tativa
-    ws = create_connection("wss://ws.binaryws.com/websockets/v3?app_id=1089")
-    ws.send(json.dumps({"authorize": DERIV_TOKEN}))
+def on_message(ws, message):
+    dados = json.loads(message)
     
-    while True:
-        if pausa_tativa > 0:
-            print(f"⏳ Aguardando pausa de {pausa_tativa} min...")
-            pausa_tativa -= 1
-            time.sleep(60)
-            continue
+    # 1. Autenticação bem-sucedida
+    if "authorize" in dados:
+        print("Autenticado na Deriv! Disparando ordem de teste...")
+        abrir_ordem(ws)
+    
+    # 2. Resposta da Ordem
+    if "buy" in dados:
+        if "error" in dados:
+            print(f"ERRO DERIV: {dados['error']['message']}")
+        else:
+            print("FOI! Ordem aberta com sucesso na conta.")
 
-        # Puxa as últimas 7 velas (6 para média + 1 atual)
-        ws.send(json.dumps({"ticks_history": "R_75", "end": "latest", "count": 7, "granularity": 60, "style": "candles"}))
-        dados = json.loads(ws.recv())
-        
-        if "candles" in dados:
-            velas = dados["candles"]
-            v_atual = velas[-1]["volume"]
-            v_passados = [v["volume"] for v in velas[:-1]]
-            media = sum(v_passados) / 6
-            
-            print(f"Volume Atual: {v_atual} | Média(6): {media:.2f}")
+def on_open(ws):
+    auth_data = {"authorize": TOKEN}
+    ws.send(json.dumps(auth_data))
 
-            if v_atual >= (media * 1.0):
-                abrir_ordem("REVERSÃO", martingale[nivel])
-                # Simulação de resultado para o Martingale
-                nivel = (nivel + 1) % 7 
-        
-        time.sleep(60)
+def iniciar_bot():
+    url = f"wss://ws.binaryws.com/websockets/v3?app_id={APP_ID}"
+    ws = websocket.WebSocketApp(url, on_open=on_open, on_message=on_message)
+    ws.run_forever()
+
 if __name__ == "__main__":
-    # Liga o motor do radar em uma pista separada
-    threading.Thread(target=radar_mercado, daemon=True).start()
-    
-    # Mantém o servidor vivo para o Render
-    app.run(host='0.0.0.0', port=10000)
+    threading.Thread(target=iniciar_bot, daemon=True).start()
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
 
