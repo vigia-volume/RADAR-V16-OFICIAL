@@ -1,2 +1,3 @@
 pandas
-deriv-api
+deriv-api-v2
+flask
