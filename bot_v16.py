@@ -6,21 +6,21 @@ import os
 
 app = Flask(__name__)
 
-# CONFIGURAÇÕES DE COMBATE - DERIV
-TOKEN = "COLE_SEU_TOKEN_AQUI" 
-APP_ID = "1089" 
+# CONFIGURAÇÕES DE COMBATE - DADOS RESGATADOS
+TOKEN = "V68YfE6G7i5X6Tj" # Token de Negociação (Trade)
+APP_ID = "61546" # Seu App ID da Deriv
 SYMBOL = "R_75" 
 
 @app.route('/')
 def home():
-    return "OPERANTE - AGUARDANDO COMANDO"
+    return "OPERANTE - ATAQUE DIRETO EM CURSO"
 
 def abrir_ordem(ws):
-    print("--- ATACANDO AGORA NO VOLATILITY 75 ---")
-    # Comando direto de compra (CALL) de 1 minuto
+    print("--- DISPARANDO AGORA NO VOLATILITY 75 ---")
+    # Comando de compra (CALL) imediato
     payload = {
         "buy": 1,
-        "price": 1,
+        "price": 100, # Preço máximo aceitável
         "parameters": {
             "amount": 1.0,
             "basis": "stake",
@@ -36,17 +36,20 @@ def abrir_ordem(ws):
 def on_message(ws, message):
     dados = json.loads(message)
     
-    # 1. Autenticação bem-sucedida
+    # 1. Autenticação
     if "authorize" in dados:
-        print("Autenticado na Deriv! Disparando ordem de teste...")
-        abrir_ordem(ws)
+        if "error" in dados:
+            print(f"ERRO DE AUTENTICAÇÃO: {dados['error']['message']}")
+        else:
+            print("AUTENTICADO! DISPARANDO TIRO DE TESTE...")
+            abrir_ordem(ws)
     
-    # 2. Resposta da Ordem
+    # 2. Resposta da Compra
     if "buy" in dados:
         if "error" in dados:
-            print(f"ERRO DERIV: {dados['error']['message']}")
+            print(f"ERRO NA OPERAÇÃO: {dados['error']['message']}")
         else:
-            print("FOI! Ordem aberta com sucesso na conta.")
+            print("ORDEM EXECUTADA COM SUCESSO NA DERIV!")
 
 def on_open(ws):
     auth_data = {"authorize": TOKEN}
@@ -58,7 +61,9 @@ def iniciar_bot():
     ws.run_forever()
 
 if __name__ == "__main__":
+    # Inicia o motor em segundo plano
     threading.Thread(target=iniciar_bot, daemon=True).start()
+    
+    # Porta padrão para o Render
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
-
