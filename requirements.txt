@@ -1,2 +1,2 @@
+pandas
 deriv-api
-asyncio
